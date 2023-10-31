@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { ref, effect } from '../dist/reactivity.esm.js'
+        const num = ref(0)
+        effect(() => {
+            app.innerHTML = 'num is:' + num.value
+        })
+
+        setTimeout(() => {
+            num.value++
+        }, 1000)
+    </script>
+</body>
+</html>

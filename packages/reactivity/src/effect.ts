@@ -2,8 +2,6 @@ import { recordEffectScope } from "./effectScope";
 
 function cleanupEffect(effect) {
     // 每次执行effect之前，都应该将该effect从deps所有属性的dep中清理出去，以及清空effect的deps数组
-    console.log('effect', effect);
-
     let { deps } = effect;
     for (let i = 0; i < deps.length; i++) {
         deps[i].delete(effect);

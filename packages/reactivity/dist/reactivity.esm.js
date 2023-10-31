@@ -2,23 +2,25 @@
 function isObject(value) {
   return typeof value === "object" && value !== null;
 }
+function isFunction(value) {
+  return typeof value === "function";
+}
 
 // packages/reactivity/src/effectScope.ts
 var activeEffectScope;
-function recordEffectScope(effect2) {
+function recordEffectScope(effect4) {
   if (activeEffectScope && activeEffectScope.active) {
-    activeEffectScope.effects.push(effect2);
+    activeEffectScope.effects.push(effect4);
   }
 }
 
 // packages/reactivity/src/effect.ts
-function cleanupEffect(effect2) {
-  console.log("effect", effect2);
-  let { deps } = effect2;
+function cleanupEffect(effect4) {
+  let { deps } = effect4;
   for (let i = 0; i < deps.length; i++) {
-    deps[i].delete(effect2);
+    deps[i].delete(effect4);
   }
-  effect2.deps.length = 0;
+  effect4.deps.length = 0;
 }
 var activeEffect;
 var ReactiveEffect = class {
@@ -89,12 +91,12 @@ function trigger(target, key, value, oldValue) {
 function triggerEffects(dep) {
   if (dep) {
     const effects = [...dep];
-    effects.forEach((effect2) => {
-      if (activeEffect !== effect2) {
-        if (!effect2.scheduler) {
-          effect2.run();
+    effects.forEach((effect4) => {
+      if (activeEffect !== effect4) {
+        if (!effect4.scheduler) {
+          effect4.run();
         } else {
-          effect2.scheduler();
+          effect4.scheduler();
         }
       }
     });
@@ -125,6 +127,9 @@ var mutableHandlers = {
 };
 
 // packages/reactivity/src/reactive.ts
+function isReactive(target) {
+  return !!(target && target["__v_isReactive" /* IS_REACTIVE */]);
+}
 var reactiveMap = /* @__PURE__ */ new WeakMap();
 function reactive(target) {
   if (!isObject(target)) {
@@ -141,8 +146,130 @@ function reactive(target) {
   reactiveMap.set(target, proxy);
   return proxy;
 }
+
+// packages/reactivity/src/ref.ts
+function ref(value) {
+  return new RefImpl(value);
+}
+function toReactive(value) {
+  return isObject(value) ? reactive(value) : value;
+}
+var RefImpl = class {
+  constructor(rawValue) {
+    this.rawValue = rawValue;
+    this.deps = void 0;
+    this.__v_isRef = true;
+    this._value = toReactive(rawValue);
+  }
+  get value() {
+    if (activeEffect) {
+      trackEffects(this.deps || (this.deps = /* @__PURE__ */ new Set()));
+    }
+    return this._value;
+  }
+  set value(newValue) {
+    if (newValue !== this.rawValue) {
+      this._value = toReactive(newValue);
+      this.rawValue = newValue;
+      triggerEffects(this.deps);
+    }
+  }
+};
+
+// packages/reactivity/src/watch.ts
+function watch(source, cb, options) {
+  doWatch(source, cb, options);
+}
+function watchEffect(effect4, options) {
+  doWatch(effect4, null, options);
+}
+function doWatch(source, cb, { immediate } = {}) {
+  let getter;
+  if (isReactive(source)) {
+    getter = () => traverse(source);
+  } else if (isFunction(source)) {
+    getter = source;
+  }
+  let oldValue;
+  let cleanup;
+  function onCleanup(userCb) {
+    cleanup = userCb;
+  }
+  const job = () => {
+    if (cb) {
+      let newValue = effect4.run();
+      if (cleanup)
+        cleanup();
+      cb(newValue, oldValue, onCleanup);
+      oldValue = newValue;
+    } else {
+      effect4.run();
+    }
+  };
+  const effect4 = new ReactiveEffect(getter, job);
+  if (immediate) {
+    return job();
+  }
+  oldValue = effect4.run();
+}
+function traverse(source, s = /* @__PURE__ */ new Set()) {
+  if (!isObject(source))
+    return source;
+  if (s.has(source))
+    return source;
+  s.add(source);
+  for (let key in source) {
+    traverse(source[key], s);
+  }
+  return source;
+}
+
+// packages/reactivity/src/computed.ts
+var noop = () => {
+};
+function computed(source) {
+  let onlyGetter = isFunction(source);
+  let getter;
+  let setter;
+  if (onlyGetter) {
+    getter = source;
+    setter = noop;
+  } else {
+    getter = source.get;
+    setter = source.set || noop;
+  }
+  return new ComputedRefImpl(getter, setter);
+}
+var ComputedRefImpl = class {
+  constructor(getter, setter) {
+    this.setter = setter;
+    this.dep = void 0;
+    this._dirty = true;
+    this.effect = new ReactiveEffect(getter, () => {
+      this._dirty = true;
+      triggerEffects(this.dep);
+    });
+  }
+  get value() {
+    if (activeEffect) {
+      trackEffects(this.dep || (this.dep = /* @__PURE__ */ new Set()));
+    }
+    if (this._dirty) {
+      this._value = this.effect.run();
+      this._dirty = false;
+    }
+    return this._value;
+  }
+  set value(newValue) {
+    this.setter(newValue);
+  }
+};
 export {
+  computed,
   effect,
-  reactive
+  reactive,
+  ref,
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=reactivity.esm.js.map

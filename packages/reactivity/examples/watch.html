@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { ref, reactive, watch, watchEffect } from '../dist/reactivity.esm.js'
+        // const num = reactive({
+        //     name: 'boob',
+        //     son: {
+        //         name: 'son',
+        //         son: {
+        //             name: 'grandson'
+        //         }
+        //     }
+        // })
+        const obj = ref(0) 
+
+        // watch(num , (n, o) => {
+        //     console.log('reactiveWatch', n, o);
+        // })
+        // watch(() => obj.value, (n, o) => {
+        //     console.log('refWatch', n, o);
+        // })
+        watchEffect(() => {
+            console.log('watchEffect', obj.value);
+        })
+
+        setTimeout(() => {
+            // num.name = '11222'
+            obj.value++
+        }, 1000)
+    </script>
+</body>
+</html>
